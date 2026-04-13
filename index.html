@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>国会ウォッチ — 政策検証ポータル</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink:    #1a1e2e;
+  --paper:  #f4f1eb;
+  --cream:  #ede9df;
+  --border: #d4cfc4;
+  --rule:   #c8c2b5;
+  --a:      #1a4fa0;
+  --a-light:#e8eef8;
+  --red:    #c0392b;
+  --green:  #1a6e3e;
+  --amber:  #b8700a;
+  --purple: #5b2d8e;
+  --cyan:   #0e6a8a;
+  --t1:     #1a1e2e;
+  --t2:     #4a5568;
+  --t3:     #8a9ab5;
+  --t4:     #b8c0cc;
+  --serif:  'Noto Serif JP', serif;
+  --sans:   'Noto Sans JP', sans-serif;
+  --mono:   'DM Mono', monospace;
+
+  /* outcome colors */
+  --ok-bg:    #edf7f1;  --ok-fg:    #1a6e3e;  --ok-bd:    #a8d8ba;
+  --part-bg:  #fef8ec;  --part-fg:  #b8700a;  --part-bd:  #f0d090;
+  --fail-bg:  #fdf0ee;  --fail-fg:  #c0392b;  --fail-bd:  #f0b0a8;
+  --back-bg:  #fde8e8;  --back-fg:  #8b1010;  --back-bd:  #e89090;
+  --unk-bg:   #f2f4f8;  --unk-fg:   #6a7a90;  --unk-bd:   #c8d0dc;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body { background: var(--cream); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+/* ══ MASTHEAD ══ */
+#masthead {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0;
+  border-bottom: 3px solid var(--a);
+}
+.mh-top {
+  display: flex; align-items: center;
+  padding: 10px 20px; gap: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.mh-logo {
+  font-family: var(--serif); font-size: 1.25rem; font-weight: 700;
+  letter-spacing: .06em; color: #fff; white-space: nowrap;
+}
+.mh-logo span { color: #7ab0ff; }
+.mh-tagline { font-size: .68rem; color: var(--t3); letter-spacing: .05em; }
+.mh-live { display: flex; align-items: center; gap: 5px; font-size: .65rem; color: #7ab0ff; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+  box-shadow: 0 0 5px #22c55e; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+
+/* search strip */
+.mh-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 20px; flex-wrap: wrap; background: #232840;
+}
+.mh-label { font-size: .65rem; color: var(--t3); white-space: nowrap; }
+input[type=text], input[type=date], select {
+  background: #1a1e2e; border: 1px solid #3a4568;
+  color: var(--paper); padding: 4px 8px; height: 28px;
+  font-family: var(--sans); font-size: .75rem; border-radius: 3px;
+}
+input:focus, select:focus { outline: none; border-color: #7ab0ff; }
+.btn { padding: 0 14px; height: 28px; border: none; border-radius: 3px;
+  font-family: var(--sans); font-size: .75rem; font-weight: 700;
+  cursor: pointer; transition: all .15s; white-space: nowrap; }
+.btn-fetch { background: #4a90e2; color: #fff; }
+.btn-fetch:hover { background: #2a70c2; }
+.btn-fetch:disabled { background: #3a4568; color: var(--t3); cursor: not-allowed; }
+.btn-sm { background: #2a3050; border: 1px solid #3a4568; color: var(--t3); }
+.btn-sm:hover { border-color: #7ab0ff; color: #7ab0ff; }
+.btn-danger { background: #2a1010; border: 1px solid #501818; color: #e07070; }
+.btn-danger:hover { background: #381414; }
+.mh-right { margin-left: auto; font-family: var(--mono); font-size: .62rem; color: var(--t3); white-space: nowrap; }
+
+/* ══ PROGRESS ══ */
+#pg { background: #232840; border-bottom: 1px solid #3a4568;
+  padding: 6px 20px; display: none; align-items: center; gap: 10px; }
+#pg.on { display: flex; }
+.pg-track { flex: 1; height: 3px; background: #3a4568; border-radius: 2px; overflow: hidden; }
+.pg-fill { height: 100%; background: #4a90e2; transition: width .3s; }
+.pg-msg { font-size: .65rem; color: var(--t3); font-family: var(--mono); }
+.pg-pct { font-family: var(--mono); font-size: .65rem; color: #7ab0ff; }
+
+/* ══ NAV TABS ══ */
+#navtabs {
+  background: var(--paper);
+  border-bottom: 2px solid var(--border);
+  padding: 0 20px;
+  display: flex; gap: 0; overflow-x: auto;
+}
+.navtab {
+  padding: 10px 18px; font-size: .82rem; font-weight: 500;
+  color: var(--t2); cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; white-space: nowrap; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.navtab:hover { color: var(--a); }
+.navtab.active { color: var(--a); border-bottom-color: var(--a); font-weight: 700; }
+.navtab .badge {
+  background: var(--a); color: #fff;
+  font-size: .55rem; padding: 1px 5px; border-radius: 8px;
+  font-family: var(--mono);
+}
+
+/* ══ MAIN CONTENT ══ */
+#main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* ══ FILTER BAR ══ */
+.filter-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px; background: var(--paper);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.filter-label { font-size: .7rem; color: var(--t2); font-weight: 700; white-space: nowrap; }
+.filter-sep { width: 1px; height: 18px; background: var(--border); }
+.fpill {
+  font-size: .72rem; padding: 4px 12px; border-radius: 20px;
+  border: 1px solid var(--border); color: var(--t2);
+  cursor: pointer; background: var(--paper); transition: all .12s;
+  white-space: nowrap;
+}
+.fpill:hover { border-color: var(--a); color: var(--a); }
+.fpill.on { background: var(--a); color: #fff; border-color: var(--a); font-weight: 700; }
+.fpill.ok   { border-color: var(--ok-bd); color: var(--ok-fg); }
+.fpill.ok.on   { background: var(--ok-fg); }
+.fpill.fail { border-color: var(--fail-bd); color: var(--fail-fg); }
+.fpill.fail.on { background: var(--fail-fg); }
+.fpill.back { border-color: var(--back-bd); color: var(--back-fg); }
+.fpill.back.on { background: var(--back-fg); }
+
+/* ══ SUMMARY BOX ══ */
+.summary-box {
+  background: var(--a-light);
+  border: 1px solid #b0c8f0; border-left: 4px solid var(--a);
+  border-radius: 0 6px 6px 0; padding: 14px 18px; margin-bottom: 20px;
+}
+.summary-box-title {
+  font-family: var(--serif); font-size: .78rem; color: var(--a);
+  font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.summary-box-text { font-size: .88rem; line-height: 2; color: var(--t1); }
+
+/* ══ KPI STRIP ══ */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 14px;
+  border-top: 3px solid var(--border);
+}
+.kpi-card.blue   { border-top-color: var(--a); }
+.kpi-card.green  { border-top-color: var(--green); }
+.kpi-card.red    { border-top-color: var(--red); }
+.kpi-card.amber  { border-top-color: var(--amber); }
+.kpi-card.purple { border-top-color: var(--purple); }
+.kpi-lbl { font-size: .65rem; color: var(--t2); letter-spacing: .05em; margin-bottom: 4px; }
+.kpi-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 500; line-height: 1; }
+.kpi-sub { font-size: .62rem; color: var(--t3); margin-top: 3px; }
+
+/* ══ CONTENT GRID ══ */
+.content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.content-grid.wide { grid-template-columns: 1fr; }
+.content-grid.thirds { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ══ SECTION CARD ══ */
+.sec-card {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+}
+.sec-card-head {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; background: #faf8f4;
+}
+.sec-card-title {
+  font-family: var(--serif); font-size: .88rem; font-weight: 600;
+  color: var(--ink); letter-spacing: .04em;
+}
+.sec-card-count { font-size: .65rem; color: var(--t3); margin-left: auto; font-family: var(--mono); }
+.sec-card-body { padding: 14px 16px; }
+
+/* ══ ARTICLE CARD ══ */
+.article {
+  border-bottom: 1px solid var(--border); padding: 14px 0;
+  cursor: pointer; transition: background .1s;
+}
+.article:last-child { border-bottom: none; padding-bottom: 0; }
+.article:first-child { padding-top: 0; }
+.article:hover { background: var(--cream); margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+.art-meta { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap; }
+.art-speaker { font-weight: 700; font-size: .88rem; color: var(--ink); }
+.art-party-chip {
+  font-size: .6rem; padding: 2px 7px; border-radius: 3px;
+  font-weight: 700; letter-spacing: .04em;
+}
+.art-date { font-family: var(--mono); font-size: .62rem; color: var(--t3); }
+.outcome-tag {
+  font-size: .62rem; padding: 2px 8px; border-radius: 3px;
+  font-weight: 700; white-space: nowrap; margin-left: auto;
+}
+.tag-ok   { background: var(--ok-bg);   color: var(--ok-fg);   border: 1px solid var(--ok-bd); }
+.tag-part { background: var(--part-bg); color: var(--part-fg); border: 1px solid var(--part-bd); }
+.tag-fail { background: var(--fail-bg); color: var(--fail-fg); border: 1px solid var(--fail-bd); }
+.tag-back { background: var(--back-bg); color: var(--back-fg); border: 1px solid var(--back-bd); }
+.tag-unk  { background: var(--unk-bg);  color: var(--unk-fg);  border: 1px solid var(--unk-bd); }
+
+.art-claim {
+  font-size: .82rem; line-height: 1.7; color: var(--t1);
+  font-family: var(--serif); margin-bottom: 6px;
+}
+.art-result {
+  font-size: .76rem; line-height: 1.6; color: var(--t2); margin-bottom: 6px;
+}
+.art-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  font-size: .6rem; padding: 1px 6px; border-radius: 3px;
+  background: var(--cream); border: 1px solid var(--border); color: var(--t2);
+}
+.chip.rate { color: var(--amber); background: var(--part-bg); border-color: var(--part-bd); }
+.chip.target { color: var(--cyan); background: #e8f4f8; border-color: #a0d0e0; }
+.chip.irony { color: var(--red); background: var(--fail-bg); border-color: var(--fail-bd); }
+.chip.stat { color: var(--cyan); }
+.chip.bud  { color: var(--purple); }
+.chip.web  { color: var(--green); }
+
+/* achievement bar */
+.ach-bar { margin: 6px 0; }
+.ach-labels { display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: .58rem; color: var(--t3); margin-bottom: 2px; }
+.ach-track { background: var(--cream); border: 1px solid var(--border);
+  height: 6px; border-radius: 3px; overflow: hidden; position: relative; }
+.ach-target { height: 100%; background: var(--border); }
+.ach-actual { height: 100%; position: absolute; top: 0; left: 0; border-radius: 3px; }
+
+/* ══ PARTY SECTION ══ */
+.party-block { margin-bottom: 20px; }
+.party-block-head {
+  padding: 8px 14px; display: flex; align-items: center; gap: 10px;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid var(--border); border-bottom: none;
+}
+.party-block-name { font-family: var(--serif); font-size: .95rem; font-weight: 700; }
+.party-block-score { font-family: var(--mono); font-size: 1rem; font-weight: 500; }
+.party-block-body { border: 1px solid var(--border); border-radius: 0 0 6px 6px; }
+
+/* ══ POLICY TYPE SECTION ══ */
+.policy-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.policy-chip {
+  font-size: .72rem; padding: 5px 14px; border-radius: 20px;
+  border: 1px solid var(--border); color: var(--t2);
+  cursor: pointer; background: var(--paper); transition: all .12s;
+}
+.policy-chip:hover { border-color: var(--a); color: var(--a); }
+.policy-chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.policy-chip .cnt { font-family: var(--mono); font-size: .58rem; opacity: .7; margin-left: 3px; }
+
+/* ══ RECENT TOPICS ══ */
+.topic-card {
+  background: var(--paper); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.topic-date { font-family: var(--mono); font-size: .62rem; color: var(--t3); margin-bottom: 4px; }
+.topic-headline { font-family: var(--serif); font-size: .95rem; font-weight: 600; line-height: 1.5; margin-bottom: 6px; }
+.topic-summary { font-size: .78rem; line-height: 1.8; color: var(--t2); }
+.topic-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ══ EMPTY STATE ══ */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 48px 20px; gap: 10px;
+  color: var(--t3); text-align: center;
+}
+.empty .ico { font-size: 2.5rem; opacity: .3; }
+.empty .msg { font-size: .85rem; }
+.empty .sub { font-size: .72rem; opacity: .7; }
+
+/* ══ MODAL ══ */
+#mo {
+  display: none; position: fixed; inset: 0;
+  background: rgba(26,30,46,.75); z-index: 200;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); padding: 20px;
+}
+#mo.on { display: flex; }
+#mb {
+  background: var(--paper); border-radius: 8px;
+  width: 820px; max-width: 100%; max-height: 86vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+#mh {
+  padding: 14px 18px; border-bottom: 2px solid var(--a);
+  background: var(--ink); display: flex; align-items: center; gap: 10px;
+}
+#mt { font-family: var(--serif); font-size: .95rem; color: #fff; flex: 1; }
+.mcl { background: none; border: none; color: var(--t3); font-size: 1.2rem; cursor: pointer; }
+.mcl:hover { color: #fff; }
+#mbody { overflow-y: auto; padding: 18px; }
+
+/* modal content */
+.m-section { margin-bottom: 16px; }
+.m-sec-title {
+  font-family: var(--mono); font-size: .6rem; color: var(--t3);
+  letter-spacing: .12em; text-transform: uppercase;
+  margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.m-claim-box {
+  background: var(--a-light); border-left: 4px solid var(--a);
+  padding: 10px 14px; border-radius: 0 4px 4px 0;
+  font-family: var(--serif); font-size: .88rem; line-height: 1.9; color: var(--ink);
+  margin-bottom: 10px;
+}
+.m-result-box {
+  padding: 10px 14px; border-radius: 4px;
+  font-size: .82rem; line-height: 1.8; margin-bottom: 10px;
+}
+.m-result-box.ok   { background: var(--ok-bg);   border: 1px solid var(--ok-bd);   color: var(--ok-fg); }
+.m-result-box.part { background: var(--part-bg); border: 1px solid var(--part-bd); color: var(--part-fg); }
+.m-result-box.fail { background: var(--fail-bg); border: 1px solid var(--fail-bd); color: var(--fail-fg); }
+.m-result-box.back { background: var(--back-bg); border: 1px solid var(--back-bd); color: var(--back-fg); }
+.m-result-box.unk  { background: var(--unk-bg);  border: 1px solid var(--unk-bd);  color: var(--unk-fg); }
+.m-grid3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 10px; }
+.m-stat { background: var(--cream); border: 1px solid var(--border); border-radius: 4px; padding: 10px; text-align: center; }
+.m-stat-lbl { font-size: .6rem; color: var(--t3); margin-bottom: 4px; }
+.m-stat-val { font-family: var(--mono); font-size: 1.2rem; font-weight: 500; }
+.m-evidence {
+  padding: 10px 12px; border-radius: 4px; margin-bottom: 6px;
+  font-size: .78rem; line-height: 1.8;
+}
+.m-evidence.stat { background: #e8f6fa; border-left: 3px solid var(--cyan); }
+.m-evidence.bud  { background: #f0ecfa; border-left: 3px solid var(--purple); }
+.m-evidence.web  { background: #ecf7f0; border-left: 3px solid var(--green); }
+.m-evidence-lbl  { font-size: .6rem; font-weight: 700; margin-bottom: 4px; }
+.m-evidence.stat .m-evidence-lbl { color: var(--cyan); }
+.m-evidence.bud  .m-evidence-lbl { color: var(--purple); }
+.m-evidence.web  .m-evidence-lbl { color: var(--green); }
+.m-speech-text {
+  font-size: .75rem; line-height: 1.9; color: var(--t2);
+  max-height: 200px; overflow-y: auto;
+  background: var(--cream); padding: 10px 12px; border-radius: 4px;
+}
+
+/* number tracker in modal */
+.num-compare {
+  display: grid; grid-template-columns: 80px 1fr 90px;
+  gap: 8px; align-items: center; margin: 8px 0;
+}
+.nc-lbl { font-size: .7rem; color: var(--t2); }
+.nc-bar { background: var(--border); height: 8px; border-radius: 4px; overflow: hidden; position: relative; }
+.nc-target { height: 100%; background: rgba(0,0,0,.08); }
+.nc-actual { height: 100%; position: absolute; top: 0; left: 0; border-radius: 4px; transition: width .8s ease; }
+.nc-val { font-family: var(--mono); font-size: .72rem; text-align: right; }
+
+/* spinner */
+.sp { display: inline-block; width: 11px; height: 11px;
+  border: 2px solid var(--border); border-top-color: var(--a);
+  border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div id="masthead">
+  <div class="mh-top">
+    <div class="mh-logo">国会<span>ウォッチ</span></div>
+    <div>
+      <div class="mh-tagline">政策発言 ↔ 統計・予算・現実 照合ポータル</div>
+    </div>
+    <div class="mh-live"><div class="live-dot"></div>LIVE</div>
+    <div class="mh-right" id="dbs">DB: 0件</div>
+  </div>
+  <div class="mh-search">
+    <span class="mh-label">キーワード</span>
+    <input type="text" id="kw" value="財源" style="width:72px">
+    <select id="house" style="width:80px"><option>参議院</option><option>衆議院</option></select>
+    <select id="mtg"   style="width:80px"><option>本会議</option><option value="">全委員会</option></select>
+    <select id="cnt"   style="width:54px"><option value="5">5件</option><option value="10" selected>10件</option><option value="20">20件</option></select>
+    <span class="mh-label">開始</span>
+    <input type="date" id="from" value="2023-01-01" style="width:118px">
+    <span class="mh-label">〜</span>
+    <input type="date" id="to" style="width:118px">
+    <button class="btn btn-fetch" id="fb" onclick="doFetch()">▶ 取得・検証</button>
+    <button class="btn btn-sm" onclick="reVerify()">🔄 再検証</button>
+    <button class="btn btn-danger" onclick="clearDB()">🗑 初期化</button>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div id="pg">
+  <div class="pg-track"><div class="pg-fill" id="pf" style="width:0%"></div></div>
+  <div class="pg-msg" id="pm">準備中...</div>
+  <div class="pg-pct" id="pp">0%</div>
+</div>
+
+<!-- NAV TABS -->
+<div id="navtabs">
+  <div class="navtab active" id="tab-top"    onclick="switchTab('top')">🏠 トップ</div>
+  <div class="navtab"        id="tab-recent" onclick="switchTab('recent')">📰 最近の話題</div>
+  <div class="navtab"        id="tab-party"  onclick="switchTab('party')">🏛 政党別</div>
+  <div class="navtab"        id="tab-policy" onclick="switchTab('policy')">📋 政策分野別</div>
+  <div class="navtab"        id="tab-verify" onclick="switchTab('verify')">🔍 検証一覧</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="page-content">
+    <div class="empty">
+      <div class="ico">📜</div>
+      <div class="msg">「取得・検証」ボタンで開始</div>
+      <div class="sub">国会発言を取得し、政府統計・予算・Webニュースと自動照合します</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="mo" onclick="closeMo(event)">
+  <div id="mb">
+    <div id="mh"><div id="mt">—</div><button class="mcl" onclick="closeMo()">✕</button></div>
+    <div id="mbody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const AAPI = "https://api.anthropic.com/v1/messages";
+const KAPI = "https://kokkai.ndl.go.jp/api/speech";
+const DBK  = "kw7_db";
+
+let DB = ld(DBK, []);
+let curTab = 'top';
+let policyFilter = 'all';
+let verifyFilter = 'all';
+let partyFilter  = 'all';
+let charts = {};
+
+function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch{return d;}}
+function sv(){localStorage.setItem(DBK, JSON.stringify(DB));}
+function clearDB(){if(!confirm('全データを削除しますか？'))return; DB=[]; sv(); render();}
+
+const mean = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : 0;
+const oInfo = o => ({
+  ok:       {cls:'tag-ok',   label:'✅ 達成',      boxCls:'ok'},
+  partial:  {cls:'tag-part', label:'🔶 部分達成',   boxCls:'part'},
+  fail:     {cls:'tag-fail', label:'❌ 未達成',     boxCls:'fail'},
+  backfire: {cls:'tag-back', label:'💥 逆効果',     boxCls:'back'},
+  unknown:  {cls:'tag-unk',  label:'❓ 未検証',     boxCls:'unk'},
+}[o] || {cls:'tag-unk', label:'—', boxCls:'unk'});
+
+const oColor = o => ({ok:'#1a6e3e',partial:'#b8700a',fail:'#c0392b',backfire:'#8b1010',unknown:'#8a9ab5'})[o]||'#8a9ab5';
+const PARTY_COLORS = ['#1a4fa0','#c0392b','#1a6e3e','#5b2d8e','#0e6a8a','#8b6010','#3a6e50','#702050'];
+const POLICY_LABELS = {
+  tax:'税制', budget:'予算・財政', gdp:'経済・GDP',
+  social:'社会保障', energy:'エネルギー', defense:'安全保障',
+  economy:'経済政策', debt:'国債・財政健全化', other:'その他'
+};
+
+// ══════════════════════════════════════
+// PROGRESS
+// ══════════════════════════════════════
+function setProg(pct,msg){
+  document.getElementById('pg').classList.add('on');
+  document.getElementById('pf').style.width=pct+'%';
+  document.getElementById('pm').textContent=msg;
+  document.getElementById('pp').textContent=Math.round(pct)+'%';
+}
+function hideProg(){ document.getElementById('pg').classList.remove('on'); }
+function dbStat(){ document.getElementById('dbs').textContent=`DB: ${DB.length}件 / 公約: ${DB.flatMap(s=>s.verifications||[]).length}件`; }
+
+// ══════════════════════════════════════
+// AI
+// ══════════════════════════════════════
+async function ai(prompt, tokens=800){
+  const r = await fetch(AAPI, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:tokens,
+      messages:[{role:'user', content:prompt}]})});
+  return (await r.json()).content?.[0]?.text||'';
+}
+async function aiSearch(prompt, tokens=800){
+  const r = await fetch(AAPI, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:tokens,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]})});
+  const d = await r.json();
+  return (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+
+async function extractClaims(s){
+  const t = await ai(`
+国会発言から政策主張・数値目標・公約を最大3件抽出しJSONのみ返せ。政策的内容なければ空配列。
+
+発言者:${s.speaker}(${s.speakerGroup||'不明'}) ${s.date}
+内容:${(s.speech||'').slice(0,1400)}
+
+JSON:[{"claim":"主張(80字)","claim_type":"tax|budget|gdp|social|energy|defense|economy|debt|other",
+"numeric_target":"数値目標またはnull","numeric_value":数値またはnull,"numeric_unit":"単位またはnull",
+"timeframe":"期限またはnull","verifiable":true/false}]`,500);
+  try{return JSON.parse(t.replace(/```json|```/g,'').trim());}catch{return [];}
+}
+
+async function verifyAll(s, claim){
+  const statT = await aiSearch(`日本の政府統計(e-Stat,内閣府,財務省)から「${claim.claim}」の実績データを調べてください。${claim.numeric_target?`目標:${claim.numeric_target}`:''}`, 500);
+  const webT  = await aiSearch(`「${claim.claim}」(${s.date.slice(0,4)}年国会発言)のその後の政策結果・達成状況を調べてください。`, 500);
+  const t = await ai(`
+国会発言の公約と以下の照合結果を統合評価してJSONのみ返せ。
+
+発言:${s.speaker}(${s.speakerGroup||'不明'}) ${s.date}
+公約:${claim.claim} / 目標:${claim.numeric_target||'なし'}
+
+【統計照合】${(statT||'').slice(0,400)}
+【Webニュース】${(webT||'').slice(0,400)}
+
+JSON:{"outcome":"ok|partial|fail|backfire|unknown","outcome_detail":"結果説明150字",
+"achievement_rate":0〜100または-1,"actual_value":数値またはnull,"actual_unit":"単位またはnull","actual_year":"年度またはnull",
+"stat_finding":"統計からの知見80字またはnull","web_finding":"Webからの知見80字またはnull",
+"irony":"逆効果の説明またはnull","verdict_score":0〜5}`,700);
+  try{
+    const r=JSON.parse(t.replace(/```json|```/g,'').trim());
+    return {claim, stat_raw:statT?.slice(0,400)||null, web_raw:webT?.slice(0,400)||null, result:r};
+  }catch{
+    return {claim, stat_raw:null, web_raw:null,
+      result:{outcome:'unknown',outcome_detail:'評価失敗',achievement_rate:-1,
+        actual_value:null,actual_unit:null,actual_year:null,stat_finding:null,web_finding:null,irony:null,verdict_score:2}};
+  }
+}
+
+// ══════════════════════════════════════
+// FETCH
+// ══════════════════════════════════════
+async function doFetch(){
+  const btn=document.getElementById('fb'); btn.disabled=true;
+  const kw=document.getElementById('kw').value.trim()||'財源';
+  const house=document.getElementById('house').value;
+  const mtg=document.getElementById('mtg').value;
+  const cnt=document.getElementById('cnt').value;
+  const from=document.getElementById('from').value;
+  const to=document.getElementById('to').value;
+
+  setProg(4,'国会会議録APIを検索中...');
+  let params=new URLSearchParams({any:kw,nameOfHouse:house,maximumRecords:cnt,recordPacking:'json'});
+  if(mtg)  params.append('nameOfMeeting',mtg);
+  if(from) params.append('from',from);
+  if(to)   params.append('until',to);
+
+  try{
+    const r=await fetch(`${KAPI}?${params}`); if(!r.ok) throw new Error(r.status);
+    const d=await r.json();
+    const sp=d.speechRecord||[];
+    if(!sp.length){alert('該当発言なし');hideProg();btn.disabled=false;return;}
+    const existing=new Set(DB.map(r=>r.speechID));
+    const news=sp.filter(s=>!existing.has(s.speechID));
+    setProg(10,`${sp.length}件取得 / 新規${news.length}件 分析開始...`);
+
+    for(let i=0;i<news.length;i++){
+      const s=news[i];
+      const base=10+Math.round(i/news.length*85);
+      setProg(base,`[${i+1}/${news.length}] ${s.speaker} — 公約抽出中...`);
+      const claims=await extractClaims(s);
+      const verifications=[];
+      for(let j=0;j<claims.length;j++){
+        if(!claims[j].verifiable) continue;
+        setProg(base+j/claims.length*8,`[${i+1}/${news.length}] ${s.speaker} — 公約${j+1}を検証中...`);
+        verifications.push(await verifyAll(s,claims[j]));
+      }
+      DB.push({...s,claims,verifications,processedAt:new Date().toISOString()});
+      sv(); render();
+    }
+    setProg(100,'完了'); setTimeout(hideProg,1200);
+  }catch(e){alert('エラー: '+e.message);hideProg();}
+  btn.disabled=false;
+}
+
+async function reVerify(){
+  if(!DB.length){alert('データなし');return;}
+  const targets=DB.filter(s=>s.verifications?.length>0);
+  setProg(0,`再検証中...`);
+  for(let i=0;i<targets.length;i++){
+    const s=targets[i];
+    setProg(i/targets.length*100,`再検証 [${i+1}/${targets.length}]: ${s.speaker}`);
+    const nv=[];
+    for(const {claim} of s.verifications){
+      if(!claim.verifiable) continue;
+      nv.push(await verifyAll(s,claim));
+    }
+    const idx=DB.findIndex(r=>r.speechID===s.speechID);
+    if(idx>=0) DB[idx].verifications=nv;
+    sv(); render();
+  }
+  setProg(100,'完了'); setTimeout(hideProg,1000);
+}
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function switchTab(t){
+  curTab=t;
+  ['top','recent','party','policy','verify'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('active',id===t);
+  });
+  render();
+}
+function render(){
+  dbStat();
+  if(!DB.length){ showEmpty(); return; }
+  if(curTab==='top')    renderTop();
+  else if(curTab==='recent') renderRecent();
+  else if(curTab==='party')  renderParty();
+  else if(curTab==='policy') renderPolicy();
+  else if(curTab==='verify') renderVerify();
+}
+function showEmpty(){
+  document.getElementById('page-content').innerHTML=`
+    <div class="empty">
+      <div class="ico">📜</div>
+      <div class="msg">「取得・検証」ボタンで開始</div>
+      <div class="sub">国会発言を取得し、政府統計・予算・Webニュースと自動照合します</div>
+    </div>`;
+}
+
+// ── TOP ──────────────────────────────
+function renderTop(){
+  const all=DB.flatMap(s=>s.verifications||[]);
+  const ct={ok:0,partial:0,fail:0,backfire:0,unknown:0};
+  all.forEach(v=>{const o=v.result?.outcome||'unknown'; if(ct[o]!==undefined)ct[o]++;});
+  const verified=all.length-ct.unknown;
+  const rate=verified>0?Math.round((ct.ok+ct.partial*0.5)/verified*100):0;
+  const parties=[...new Set(DB.map(s=>s.speakerGroup||'不明'))].length;
+
+  // generate overall summary text
+  const recent=DB.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+  const recentNames=recent.map(s=>s.speaker).join('、');
+
+  const summaryText = all.length
+    ? `現在 ${DB.length}件の発言から ${all.length}件の政策公約・主張を抽出し検証中。公約実現率は${rate}%（達成${ct.ok}件・部分達成${ct.partial}件・未達成${ct.fail}件・逆効果${ct.backfire}件）。${parties}政党の議員が発言しています。直近の発言: ${recentNames}。`
+    : '公約・数値目標の検証結果はまだありません。';
+
+  let html=`
+    <div class="summary-box">
+      <div class="summary-box-title">📊 全体サマリー</div>
+      <div class="summary-box-text">${summaryText}</div>
+    </div>
+    <div class="kpi-strip">
+      <div class="kpi-card blue"><div class="kpi-lbl">総発言数</div><div class="kpi-val" style="color:var(--a)">${DB.length}</div><div class="kpi-sub">${parties}政党</div></div>
+      <div class="kpi-card green"><div class="kpi-lbl">公約実現率</div><div class="kpi-val" style="color:${rate>=60?'var(--green)':rate>=40?'var(--amber)':'var(--red)'}">${rate}%</div><div class="kpi-sub">達成+部分/検証済</div></div>
+      <div class="kpi-card green"><div class="kpi-lbl">達成</div><div class="kpi-val" style="color:var(--green)">${ct.ok}</div><div class="kpi-sub">部分含む ${ct.ok+ct.partial}件</div></div>
+      <div class="kpi-card red"><div class="kpi-lbl">未達成・逆効果</div><div class="kpi-val" style="color:var(--red)">${ct.fail+ct.backfire}</div><div class="kpi-sub">逆効果 ${ct.backfire}件含</div></div>
+      <div class="kpi-card amber"><div class="kpi-lbl">未検証</div><div class="kpi-val" style="color:var(--amber)">${ct.unknown}</div><div class="kpi-sub">検証中または情報不足</div></div>
+    </div>
+    <div class="content-grid">
+      <div class="sec-card">
+        <div class="sec-card-head"><span class="sec-card-title">💥 逆効果・問題発言</span><span class="sec-card-count">${ct.backfire+ct.fail}件</span></div>
+        <div class="sec-card-body">`;
+
+  const problems=DB.flatMap(s=>(s.verifications||[]).filter(v=>v.result?.outcome==='backfire'||v.result?.outcome==='fail')
+    .map(v=>({...v,speaker:s.speaker,party:s.speakerGroup,date:s.date,speechID:s.speechID})))
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+  if(problems.length) html+=problems.map(v=>articleCard(v)).join('');
+  else html+=`<div class="empty" style="padding:24px"><div class="ico" style="font-size:1.5rem">✅</div><div class="msg">問題発言なし</div></div>`;
+  html+=`</div></div>
+      <div class="sec-card">
+        <div class="sec-card-head"><span class="sec-card-title">✅ 達成発言</span><span class="sec-card-count">${ct.ok+ct.partial}件</span></div>
+        <div class="sec-card-body">`;
+  const goods=DB.flatMap(s=>(s.verifications||[]).filter(v=>v.result?.outcome==='ok'||v.result?.outcome==='partial')
+    .map(v=>({...v,speaker:s.speaker,party:s.speakerGroup,date:s.date,speechID:s.speechID})))
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+  if(goods.length) html+=goods.map(v=>articleCard(v)).join('');
+  else html+=`<div class="empty" style="padding:24px"><div class="ico" style="font-size:1.5rem">⏳</div><div class="msg">達成発言なし</div></div>`;
+  html+=`</div></div></div>`;
+  document.getElementById('page-content').innerHTML=html;
+}
+
+// ── RECENT ───────────────────────────
+function renderRecent(){
+  const sorted=[...DB].sort((a,b)=>b.date.localeCompare(a.date));
+  const allV=sorted.flatMap(s=>(s.verifications||[]).map(v=>({...v,speaker:s.speaker,party:s.speakerGroup,date:s.date,speechID:s.speechID})));
+  // group by week
+  const weeks={};
+  allV.forEach(v=>{
+    const wk=weekKey(v.date);
+    if(!weeks[wk]) weeks[wk]=[];
+    weeks[wk].push(v);
+  });
+  const wkKeys=Object.keys(weeks).sort().reverse();
+
+  let html=``;
+  wkKeys.forEach(wk=>{
+    const arr=weeks[wk];
+    const cts={ok:0,partial:0,fail:0,backfire:0,unknown:0};
+    arr.forEach(v=>{const o=v.result?.outcome||'unknown';if(cts[o]!==undefined)cts[o]++;});
+    html+=`<div class="topic-card">
+      <div class="topic-date">📅 ${wk} 週  ─  ${arr.length}件の公約検証</div>
+      <div class="topic-tags">
+        ${cts.ok?`<span class="fpill ok on" style="font-size:.62rem;padding:2px 8px;">✅ ${cts.ok}</span>`:''}
+        ${cts.partial?`<span class="fpill" style="font-size:.62rem;padding:2px 8px;border-color:var(--part-bd);color:var(--part-fg);">🔶 ${cts.partial}</span>`:''}
+        ${cts.fail?`<span class="fpill" style="font-size:.62rem;padding:2px 8px;border-color:var(--fail-bd);color:var(--fail-fg);">❌ ${cts.fail}</span>`:''}
+        ${cts.backfire?`<span class="fpill" style="font-size:.62rem;padding:2px 8px;border-color:var(--back-bd);color:var(--back-fg);">💥 ${cts.backfire}</span>`:''}
+      </div>
+    </div>
+    <div class="content-grid">${arr.slice(0,4).map(v=>`
+      <div class="sec-card">
+        <div class="sec-card-body" style="padding:12px 14px;">${articleCard(v)}</div>
+      </div>`).join('')}</div>`;
+  });
+  document.getElementById('page-content').innerHTML=html||`<div class="empty"><div class="ico">📰</div><div class="msg">データなし</div></div>`;
+}
+
+// ── PARTY ────────────────────────────
+function renderParty(){
+  const spkMap={};
+  DB.forEach(s=>{
+    const p=s.speakerGroup||'不明';
+    if(!spkMap[p]) spkMap[p]={name:p,items:[],scores:[],ok:0,fail:0,back:0};
+    (s.verifications||[]).forEach(v=>{
+      spkMap[p].items.push({...v,speaker:s.speaker,party:p,date:s.date,speechID:s.speechID});
+      spkMap[p].scores.push(v.result?.verdict_score||0);
+      const o=v.result?.outcome||'unknown';
+      if(o==='ok'||o==='partial') spkMap[p].ok++;
+      if(o==='fail') spkMap[p].fail++;
+      if(o==='backfire') spkMap[p].back++;
+    });
+  });
+  const parties=Object.values(spkMap).sort((a,b)=>mean(b.scores)-mean(a.scores));
+
+  const allParties=['all',...parties.map(p=>p.name)];
+  let html=`<div class="filter-bar">
+    <span class="filter-label">政党</span>
+    ${allParties.map(p=>`<span class="fpill ${p===partyFilter?'on':''}" onclick="partyFilter='${p}';renderParty()">${p==='all'?'すべて':p}</span>`).join('')}
+  </div>`;
+
+  const filtered=partyFilter==='all'?parties:parties.filter(p=>p.name===partyFilter);
+  filtered.forEach((p,pi)=>{
+    const avg=mean(p.scores);
+    const color=PARTY_COLORS[pi%PARTY_COLORS.length];
+    html+=`<div class="party-block">
+      <div class="party-block-head" style="background:${color}15;border-color:${color}40;">
+        <div class="art-party-chip" style="background:${color}20;color:${color};border:1px solid ${color}40;">${p.name}</div>
+        <div class="party-block-score" style="color:${avg>=3.5?'var(--green)':avg>=2.5?'var(--amber)':'var(--red)'}">${avg.toFixed(1)}<span style="font-size:.6rem;color:var(--t3)">/5</span></div>
+        <span style="font-size:.72rem;color:var(--t2);">${p.items.length}件検証 ／ ✅${p.ok} ❌${p.fail} 💥${p.back}</span>
+      </div>
+      <div class="party-block-body"><div class="sec-card-body">
+        ${p.items.slice(0,4).map(v=>articleCard(v)).join('')}
+      </div></div>
+    </div>`;
+  });
+  document.getElementById('page-content').innerHTML=html;
+}
+
+// ── POLICY ───────────────────────────
+function renderPolicy(){
+  const allV=DB.flatMap(s=>(s.verifications||[]).map(v=>({...v,speaker:s.speaker,party:s.speakerGroup,date:s.date,speechID:s.speechID})));
+  const typeCounts={};
+  allV.forEach(v=>{const t=v.claim?.claim_type||'other'; typeCounts[t]=(typeCounts[t]||0)+1;});
+  const types=['all',...Object.keys(typeCounts).sort((a,b)=>typeCounts[b]-typeCounts[a])];
+
+  let html=`<div class="policy-chip-row">
+    ${types.map(t=>`<span class="policy-chip ${t===policyFilter?'on':''}" onclick="policyFilter='${t}';renderPolicy()">
+      ${t==='all'?'すべての政策分野':POLICY_LABELS[t]||t}
+      ${t!=='all'?`<span class="cnt">${typeCounts[t]}</span>`:''}
+    </span>`).join('')}
+  </div>`;
+
+  const filtered=policyFilter==='all'?allV:allV.filter(v=>(v.claim?.claim_type||'other')===policyFilter);
+  if(!filtered.length){html+=`<div class="empty"><div class="ico">📋</div><div class="msg">該当なし</div></div>`;
+    document.getElementById('page-content').innerHTML=html; return;}
+
+  // summary per type
+  if(policyFilter==='all'){
+    html+=`<div class="content-grid thirds">`;
+    Object.entries(typeCounts).forEach(([t,cnt])=>{
+      const tvs=allV.filter(v=>(v.claim?.claim_type||'other')===t);
+      const cts={ok:0,partial:0,fail:0,backfire:0,unknown:0};
+      tvs.forEach(v=>{const o=v.result?.outcome||'unknown';if(cts[o]!==undefined)cts[o]++;});
+      const rate=(cnt-cts.unknown)>0?Math.round((cts.ok+cts.partial*0.5)/(cnt-cts.unknown)*100):0;
+      html+=`<div class="sec-card" style="cursor:pointer" onclick="policyFilter='${t}';renderPolicy()">
+        <div class="sec-card-head"><span class="sec-card-title">${POLICY_LABELS[t]||t}</span><span class="sec-card-count">${cnt}件</span></div>
+        <div class="sec-card-body">
+          <div style="font-family:var(--mono);font-size:1.4rem;font-weight:500;color:${rate>=60?'var(--green)':rate>=40?'var(--amber)':'var(--red)'};">${rate}%</div>
+          <div style="font-size:.65rem;color:var(--t3);margin-top:2px;">実現率</div>
+          <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+            ${cts.ok?`<span class="chip" style="color:var(--ok-fg);background:var(--ok-bg);border-color:var(--ok-bd);">✅ ${cts.ok}</span>`:''}
+            ${cts.fail+cts.backfire?`<span class="chip" style="color:var(--fail-fg);background:var(--fail-bg);border-color:var(--fail-bd);">❌ ${cts.fail+cts.backfire}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  } else {
+    html+=`<div class="content-grid">${filtered.map(v=>`
+      <div class="sec-card"><div class="sec-card-body">${articleCard(v)}</div></div>`).join('')}</div>`;
+  }
+  document.getElementById('page-content').innerHTML=html;
+}
+
+// ── VERIFY LIST ──────────────────────
+function renderVerify(){
+  const allV=DB.flatMap(s=>(s.verifications||[]).map(v=>({...v,speaker:s.speaker,party:s.speakerGroup,date:s.date,speechID:s.speechID})))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  const filters=['all','ok','partial','fail','backfire','unknown'];
+  const fLabels={all:'すべて',ok:'✅ 達成',partial:'🔶 部分',fail:'❌ 未達成',backfire:'💥 逆効果',unknown:'❓ 未検証'};
+  const cts={ok:0,partial:0,fail:0,backfire:0,unknown:0};
+  allV.forEach(v=>{const o=v.result?.outcome||'unknown';if(cts[o]!==undefined)cts[o]++;});
+
+  let html=`<div class="filter-bar">
+    <span class="filter-label">絞り込み</span>
+    ${filters.map(f=>`<span class="fpill ${f===verifyFilter?'on':''}" onclick="verifyFilter='${f}';renderVerify()">
+      ${fLabels[f]}${f!=='all'?` (${cts[f]||0})`:''}
+    </span>`).join('')}
+  </div>`;
+
+  const filtered=verifyFilter==='all'?allV:allV.filter(v=>(v.result?.outcome||'unknown')===verifyFilter);
+  if(!filtered.length){html+=`<div class="empty"><div class="ico">🔍</div><div class="msg">該当なし</div></div>`;
+    document.getElementById('page-content').innerHTML=html; return;}
+
+  html+=`<div class="content-grid">${filtered.map(v=>`
+    <div class="sec-card"><div class="sec-card-body">${articleCard(v)}</div></div>`).join('')}</div>`;
+  document.getElementById('page-content').innerHTML=html;
+}
+
+// ══════════════════════════════════════
+// ARTICLE CARD (共通コンポーネント)
+// ══════════════════════════════════════
+function articleCard(v){
+  const o=v.result?.outcome||'unknown';
+  const {cls,label}=oInfo(o);
+  const rate=v.result?.achievement_rate;
+  const tgt=v.claim?.numeric_value;
+  const act=v.result?.actual_value;
+  const unit=v.claim?.numeric_unit||v.result?.actual_unit||'';
+  const party=v.party||'';
+  const partyIdx=[...new Set(DB.map(s=>s.speakerGroup||''))].indexOf(party);
+  const partyColor=PARTY_COLORS[partyIdx%PARTY_COLORS.length]||'#4a5568';
+
+  let html=`<div class="article" onclick="openDetail('${v.speechID}','${encodeURIComponent(v.claim?.claim||'')}')">
+    <div class="art-meta">
+      <span class="art-speaker">${v.speaker||'不明'}</span>
+      ${party?`<span class="art-party-chip" style="background:${partyColor}18;color:${partyColor};border:1px solid ${partyColor}40;">${party}</span>`:''}
+      <span class="art-date">${v.date}</span>
+      <span class="outcome-tag ${cls}">${label}</span>
+    </div>
+    <div class="art-claim">「${v.claim?.claim||''}」</div>`;
+
+  // achievement bar for numeric targets
+  if(tgt!=null && act!=null){
+    const actPct=Math.min(Math.abs(act/tgt)*100,130);
+    const barColor=actPct>=100?'var(--green)':actPct>=60?'var(--amber)':'var(--red)';
+    html+=`<div class="ach-bar">
+      <div class="ach-labels"><span>目標: ${tgt}${unit}</span><span>実績: ${act}${unit}${v.result?.actual_year?' ('+v.result.actual_year+')':''}</span></div>
+      <div class="ach-track">
+        <div class="ach-target" style="width:100%"></div>
+        <div class="ach-actual" style="width:${actPct}%;background:${barColor}"></div>
+      </div>
+    </div>`;
+  }
+
+  if(v.result?.outcome_detail)
+    html+=`<div class="art-result">${v.result.outcome_detail}</div>`;
+
+  html+=`<div class="art-chips">
+    ${v.claim?.numeric_target?`<span class="chip target">目標: ${v.claim.numeric_target}</span>`:''}
+    ${rate>=0?`<span class="chip rate">達成率 ${rate}%</span>`:''}
+    ${v.result?.irony?`<span class="chip irony">⚠️ 逆効果</span>`:''}
+    ${v.stat_raw?`<span class="chip stat">📊 統計</span>`:''}
+    ${v.web_raw?`<span class="chip web">🌐 Web</span>`:''}
+    ${v.claim?.claim_type?`<span class="chip">#${POLICY_LABELS[v.claim.claim_type]||v.claim.claim_type}</span>`:''}
+  </div></div>`;
+  return html;
+}
+
+// ══════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════
+function openMo(title,html){
+  document.getElementById('mt').textContent=title;
+  document.getElementById('mbody').innerHTML=html;
+  document.getElementById('mo').classList.add('on');
+}
+function closeMo(e){
+  if(e && e.target!==document.getElementById('mo')) return;
+  document.getElementById('mo').classList.remove('on');
+}
+
+function openDetail(sid, claimEnc){
+  const s=DB.find(r=>r.speechID===sid); if(!s) return;
+  const claimStr=decodeURIComponent(claimEnc);
+  const ver=s.verifications?.find(v=>v.claim?.claim===claimStr);
+  if(!ver) return;
+  const o=ver.result?.outcome||'unknown';
+  const {label,boxCls}=oInfo(o);
+  const rate=ver.result?.achievement_rate;
+  const tgt=ver.claim?.numeric_value;
+  const act=ver.result?.actual_value;
+  const unit=ver.claim?.numeric_unit||ver.result?.actual_unit||'';
+
+  const html=`
+    <div class="m-section">
+      <div class="m-sec-title">発言者</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-family:var(--serif);font-size:1.05rem;font-weight:700;">${s.speaker||'不明'}</span>
+        ${s.speakerGroup?`<span style="font-size:.72rem;padding:3px 9px;border-radius:3px;background:#e8eef8;color:var(--a);border:1px solid #b0c8f0;">${s.speakerGroup}</span>`:''}
+        <span style="font-family:var(--mono);font-size:.7rem;color:var(--t3);">${s.date} 第${s.session||'?'}回国会 第${s.issue||'?'}号</span>
+      </div>
+    </div>
+
+    <div class="m-section">
+      <div class="m-sec-title">政策的主張・公約</div>
+      <div class="m-claim-box">${ver.claim?.claim||''}
+        ${ver.claim?.numeric_target?`<br><span style="font-family:var(--mono);font-size:.72rem;color:var(--cyan);">数値目標: ${ver.claim.numeric_target}</span>`:''}
+        ${ver.claim?.timeframe?`<br><span style="font-size:.7rem;color:var(--t3);">目標期限: ${ver.claim.timeframe}</span>`:''}
+        <br><span style="font-size:.65rem;color:var(--t3);">分野: ${POLICY_LABELS[ver.claim?.claim_type]||ver.claim?.claim_type||'—'}</span>
+      </div>
+    </div>
+
+    ${tgt!=null&&act!=null?`
+    <div class="m-section">
+      <div class="m-sec-title">数値目標 vs 実績</div>
+      <div class="num-compare">
+        <span class="nc-lbl">目標値</span>
+        <div class="nc-bar"><div class="nc-target" style="width:100%"></div></div>
+        <span class="nc-val" style="color:var(--t2)">${tgt}${unit}</span>
+      </div>
+      <div class="num-compare">
+        <span class="nc-lbl">実績 ${ver.result?.actual_year||''}</span>
+        <div class="nc-bar">
+          <div class="nc-target" style="width:100%"></div>
+          <div class="nc-actual" style="width:${Math.min(Math.abs(act/tgt)*100,130)}%;background:${act/tgt>=1?'var(--green)':act/tgt>=0.6?'var(--amber)':'var(--red)'}"></div>
+        </div>
+        <span class="nc-val" style="color:${act/tgt>=1?'var(--green)':act/tgt>=0.6?'var(--amber)':'var(--red)'}">${act}${unit}</span>
+      </div>
+      ${rate>=0?`<div style="font-family:var(--mono);font-size:.78rem;font-weight:700;color:${rate>=60?'var(--green)':rate>=40?'var(--amber)':'var(--red)'}">達成率: ${rate}%</div>`:''}
+    </div>`:''}
+
+    <div class="m-section">
+      <div class="m-sec-title">検証結果</div>
+      <div class="m-result-box ${boxCls}"><b>${label}</b><br>${ver.result?.outcome_detail||''}</div>
+      ${ver.result?.irony?`<div style="background:var(--back-bg);border:1px solid var(--back-bd);border-left:4px solid var(--red);padding:9px 12px;border-radius:0 4px 4px 0;font-size:.78rem;color:var(--back-fg);line-height:1.7;margin-top:6px;">⚠️ <b>逆効果・皮肉な結果:</b> ${ver.result.irony}</div>`:''}
+    </div>
+
+    <div class="m-section">
+      <div class="m-sec-title">照合根拠</div>
+      ${ver.stat_raw?`<div class="m-evidence stat"><div class="m-evidence-lbl">📊 政府統計データ（e-Stat・内閣府・財務省）</div><div>${ver.stat_raw}</div></div>`:''}
+      ${ver.web_raw?`<div class="m-evidence web"><div class="m-evidence-lbl">🌐 Webニュース・官公庁発表</div><div>${ver.web_raw}</div></div>`:''}
+      ${ver.result?.stat_finding?`<div style="font-size:.75rem;color:var(--cyan);margin-top:4px;">📊 統計から: ${ver.result.stat_finding}</div>`:''}
+      ${ver.result?.web_finding?`<div style="font-size:.75rem;color:var(--green);margin-top:3px;">🌐 Webから: ${ver.result.web_finding}</div>`:''}
+    </div>
+
+    <div class="m-section">
+      <div class="m-sec-title">発言原文（抜粋）</div>
+      <div class="m-speech-text">${(s.speech||'').slice(0,600).replace(/\n/g,'<br>')}…</div>
+      ${s.speechURL?`<a href="${s.speechURL}" target="_blank" style="color:var(--a);font-size:.7rem;margin-top:6px;display:inline-block;">📄 国会会議録で全文確認 →</a>`:''}
+    </div>
+  `;
+  openMo(`${s.speaker}「${(ver.claim?.claim||'').slice(0,30)}…」`, html);
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function weekKey(d){
+  const dt=new Date(d),day=dt.getDay(),m=new Date(dt);
+  m.setDate(dt.getDate()-(day===0?6:day-1)); return m.toISOString().slice(0,10);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+dbStat(); render();
+</script>
+</body>
+</html>
